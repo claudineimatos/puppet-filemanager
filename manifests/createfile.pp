@@ -15,6 +15,19 @@ define filemanager::createfile(
 
 	if($url)
 	{
+		
+		if($replace){
+			exec {"file_exist ${$path}/${$name}":
+				command => '/bin/true',
+			}
+		}
+		else
+		{
+			exec {"file_exist ${$path}/${$name}":
+				command => '/bin/true',
+				onlyif => 'test -f ${$path}/${$name}'
+			}
+		}
 
 		exec { "mkdir ${$path}":
 			path => '/usr/bin:/bin:/usr/sbin:/sbin',
@@ -25,7 +38,7 @@ define filemanager::createfile(
 		exec { "download file ${name}":
 			path => '/usr/bin:/bin:/usr/sbin:/sbin',
 			command => "wget \"$url\" -O /tmp/$name",
-			require => exec["mkdir ${$path}"]
+			require => [ exec["mkdir ${$path}"], exec["file_exist ${$path}/${$name}"] ],
 		}
 
 		file { "${$path}/${$name}":
@@ -35,12 +48,12 @@ define filemanager::createfile(
 			mode		=> $mode,
 			source	=> "/tmp/$name",
 			replace => $replace,
-			require => exec["download file ${$name}"],
+			require => [ exec["download file ${$name}"] ],
 		}
 
 		file { "/tmp/${$name}":
 			ensure => absent,
-			require => [ file["${path}/${$name}"], exec["download file ${$name}"] ]
+			require => [ exec["download file ${$name}"] ]
 		}
 	}
 	else
